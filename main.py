@@ -2,17 +2,17 @@ import telebot
 import time
 import threading
 import os
+import datetime
 
 # --- CONFIGURATION ---
 TOKEN = "8736653618:AAHUovC-cs44RWTOrbFaNKYVu-yvytax8zE"
 CANAL_ID = -1003713698152
 LIEN_PAYE = "https://kheskieb.mychariow.shop/prd_7cpcfx"
-DUREE_ESSAI = 7200  # 2 heures en secondes
-DB_FILE = "utilisateurs.txt" # Pour bloquer les tricheurs
+DUREE_ESSAI = 3600  # Modifié à 1 heure (3600 secondes)
+DB_FILE = "utilisateurs.txt"
 
 bot = telebot.TeleBot(TOKEN)
 
-# Fonction pour enregistrer les tricheurs
 def deja_teste(user_id):
     if not os.path.exists(DB_FILE):
         return False
@@ -24,17 +24,17 @@ def marquer_teste(user_id):
         f.write(str(user_id) + "\n")
 
 def processus_expulsion(user_id):
-    # Attente des 2 heures
+    # Attente de 1 heure
     time.sleep(DUREE_ESSAI)
     try:
-        # Expulsion
+        # Expulsion du canal
         bot.ban_chat_member(CANAL_ID, user_id)
-        # On débannit immédiatement (pour qu'il puisse payer et revenir)
+        # Débannissement pour permettre un futur achat
         bot.unban_chat_member(CANAL_ID, user_id)
         
-        # Message de fin d'essai
-        bot.send_message(user_id, f"❌ Ton essai gratuit est terminé.\n\nPour accéder à nouveau au canal sans limite, tu peux acheter ton accès ici : {LIEN_PAYE}")
-        print(f"Utilisateur {user_id} expulsé après 2h.")
+        # Notification de fin
+        bot.send_message(user_id, f"❌ Ton essai gratuit de 1 heure est terminé.\n\nPour revenir définitivement, c'est ici : {LIEN_PAYE}")
+        print(f"Utilisateur {user_id} expulsé après 1h.")
     except Exception as e:
         print(f"Erreur lors de l'expulsion de {user_id} : {e}")
 
@@ -43,25 +43,33 @@ def handle_start(message):
     user_id = message.from_user.id
     
     if deja_teste(user_id):
-        bot.send_message(user_id, "⚠️ Tu as déjà utilisé ton essai gratuit. Achète un accès ici : " + LIEN_PAYE)
+        bot.send_message(user_id, f"⚠️ Tu as déjà profité de l'essai gratuit.\n\nPrends ton accès ici : {LIEN_PAYE}")
         return
 
     try:
-        # Création d'un lien d'invitation unique (valable 1 fois)
-        invite = bot.create_chat_invite_link(CANAL_ID, member_limit=1)
+        # Calcul de l'expiration du LIEN (1 heure à partir de maintenant)
+        # On ajoute une petite marge de 5 min au lien pour être sûr qu'il puisse entrer
+        expire_timestamp = int(time.time() + 3600 + 300) 
         
-        bot.send_message(user_id, f"🎁 Bienvenue ! Voici ton accès gratuit pour 2 heures :\n{invite.invite_link}\n\n⚠️ Tu seras automatiquement retiré après ce délai.")
+        # Création du lien d'invitation unique avec expiration technique
+        invite = bot.create_chat_invite_link(
+            CANAL_ID, 
+            member_limit=1, 
+            expire_date=expire_timestamp
+        )
         
-        # Marquer l'utilisateur comme ayant déjà testé
+        bot.send_message(user_id, f"🎁 Bienvenue ! Voici ton accès gratuit pour 1 HEURE :\n\n{invite.invite_link}\n\n⚠️ Attention : Ce lien expire vite et tu seras retiré du canal dans 60 minutes.")
+        
         marquer_teste(user_id)
         
-        # Lancer le chrono dans un fil séparé (thread)
+        # Lancement du chrono d'expulsion (1h)
         t = threading.Thread(target=processus_expulsion, args=(user_id,))
+        t.daemon = True # Pour que le thread ne bloque pas l'arrêt du bot
         t.start()
         
     except Exception as e:
-        bot.send_message(user_id, "Désolé, une erreur est survenue. Vérifie que le bot est bien Administrateur du canal.")
+        bot.send_message(user_id, "Erreur : Vérifie que le bot est Administrateur avec droit d'inviter et de bannir.")
         print(f"Erreur : {e}")
 
-print("Le bot est lancé...")
+print("Le bot est lancé (Mode 1 Heure)...")
 bot.polling(none_stop=True)
