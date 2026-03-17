@@ -29,7 +29,8 @@ def obtenir_photo_canal(chat_id):
     try:
         chat = bot.get_chat(chat_id)
         if chat.photo:
-            return bot.get_file(chat.photo.big_file_id).file_path
+            file_info = bot.get_file(chat.photo.big_file_id)
+            return file_info.file_path
     except: return None
 
 def boucle_verification_expulsions():
@@ -45,13 +46,15 @@ def boucle_verification_expulsions():
                     if len(parts) == 2:
                         u_id, t_fin = parts
                         if maintenant >= float(t_fin):
-                            bot.ban_chat_member(CANAL_ID, int(u_id))
-                            bot.unban_chat_member(CANAL_ID, int(u_id))
-                            msg = (f"**❌ TON ESSAI GRATUIT DE {DUREE_ESSAI_HEURES} HEURE EST TERMINÉ.**\n\n"
-                                   "<blockquote>Si tu veux continuer à suivre nos différents bande dessiné, webtoonx et manhwax et ne rien rater sur les prochains publication :</blockquote>\n\n"
-                                   f"**👉 REJOINT NOUS ICI :**\n{LIEN_PAYE}\n\n"
-                                   "**ON T'ATTEND DE L'AUTRE CÔTÉ ! 🚀🔥**")
-                            bot.send_message(int(u_id), msg, parse_mode="HTML")
+                            try:
+                                bot.ban_chat_member(CANAL_ID, int(u_id))
+                                bot.unban_chat_member(CANAL_ID, int(u_id))
+                                msg = (f"<b>❌ TON ESSAI GRATUIT DE {DUREE_ESSAI_HEURES} HEURE EST TERMINÉ.</b>\n\n"
+                                       "<blockquote>Si tu veux continuer à suivre nos différents bande dessiné, webtoonx et manhwax et ne rien rater sur les prochains publication :</blockquote>\n\n"
+                                       f"<b>👉 REJOINT NOUS ICI :</b>\n{LIEN_PAYE}\n\n"
+                                       "<b>ON T'ATTEND DE L'AUTRE CÔTÉ ! 🚀🔥</b>")
+                                bot.send_message(int(u_id), msg, parse_mode="HTML")
+                            except: pass
                         else: nouvelles_lignes.append(ligne)
                 with open(DB_FILE, "w") as f:
                     f.writelines(nouvelles_lignes)
@@ -64,23 +67,23 @@ def handle_start(message):
         user_id = message.from_user.id
         prenom = (message.from_user.first_name).upper()
         if est_deja_venu(user_id):
-            bot.send_message(user_id, f"**⚠️ {prenom} , TU AS DÉJÀ UTILISÉ TON ESSAI GRATUIT.**\n\n**ACCÈS VIP ICI :** {LIEN_PAYE}", parse_mode="HTML")
+            bot.send_message(user_id, f"<b>⚠️ {prenom} , TU AS DÉJÀ UTILISÉ TON ESSAI GRATUIT.</b>\n\n<b>ACCÈS VIP ICI :</b> {LIEN_PAYE}", parse_mode="HTML")
             return
         
         expire_ts = int(time.time() + (DUREE_ESSAI_HEURES * 3600))
         invite = bot.create_chat_invite_link(CANAL_ID, member_limit=1, expire_date=expire_ts)
         
-        texte = (f"🤝 **BIENVENUE {prenom} PARMI NOUS .**\n\n"
+        texte = (f"🤝 <b>BIENVENUE {prenom} PARMI NOUS .</b>\n\n"
                  "<blockquote>Si tu veux profiter de plus et meilleures bande dessiné excitante et veut diversifié ta culture</blockquote>\n\n"
-                 f"👉 **{prenom} ,**\n"
+                 f"👉 <b>{prenom} ,</b>\n"
                  "<blockquote>..Rejoignez directement le canal VIP ... tout juste là ⬇️\n👇</blockquote>\n\n"
                  f"{invite.invite_link}\n\n"
-                 "**👇👇👇👇👇👇👇👇👇👇👇**\n\n"
-                 "**👇 CLIC SUR LE MENU 🎛️ POUR COMMENCER 👇**")
+                 "<b>👇👇👇👇👇👇👇👇👇👇👇</b>\n\n"
+                 "<b>👇 CLIC SUR LE MENU 🎛️ POUR COMMENCER 👇</b>")
 
-        photo = obtenir_photo_canal(CANAL_ID)
-        if photo:
-            url = f"https://api.telegram.org/file/bot{TOKEN}/{photo}"
+        photo_path = obtenir_photo_canal(CANAL_ID)
+        if photo_path:
+            url = f"https://api.telegram.org/file/bot{TOKEN}/{photo_path}"
             bot.send_photo(user_id, url, caption=texte, parse_mode="HTML")
         else:
             bot.send_message(user_id, texte, parse_mode="HTML")
