@@ -5,7 +5,6 @@ import os
 from datetime import datetime, timedelta
 
 # --- CONFIGURATION ---
-# Ton nouveau Token est ici :
 TOKEN = "8736653618:AAHz6vq1a0yudY-RxbvkfMsis10VWSLkVtw"
 CANAL_ID = -1003713698152
 LIEN_PAYE = "https://kheskieb.mychariow.shop/prd_7cpcfx"
@@ -91,9 +90,14 @@ def handle_start(message):
         enregistrer_expulsion(user_id)
     except Exception as e: print(f"Erreur Start: {e}")
 
+# --- LANCEMENT ---
 if __name__ == "__main__":
-    # Lancement de la vérification des expulsions en arrière-plan
+    # Lancement du thread de surveillance
     threading.Thread(target=boucle_verification_expulsions, daemon=True).start()
-    print("Bot lancé avec le nouveau Token...")
-    # infinity_polling est plus stable pour éviter les déconnexions
-    bot.infinity_polling(skip_pending=True, timeout=10, long_polling_timeout=5)
+    
+    print("NETTOYAGE DES ANCIENNES SESSIONS...")
+    bot.remove_webhook() # Supprime les conflits 409
+    time.sleep(1)
+    
+    print("BOT RÉVEILLÉ ET PRÊT !🚀")
+    bot.infinity_polling(skip_pending=True, timeout=20)
